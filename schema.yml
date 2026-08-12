@@ -39122,13 +39122,8 @@ components:
               type: boolean
               description: Upon successful authentication, re-start authentication
                 in other open tabs.
-            flows_refresh_others:
-              type: boolean
-              description: Refresh other tabs after successful authentication.
-              deprecated: true
           required:
           - flows_continuous_login
-          - flows_refresh_others
           readOnly: true
       required:
       - branding_custom_css
@@ -53797,15 +53792,10 @@ components:
               type: boolean
               description: Upon successful authentication, re-start authentication
                 in other open tabs.
-            flows_refresh_others:
-              type: boolean
-              description: Refresh other tabs after successful authentication.
-              deprecated: true
           required:
           - core_default_app_access
           - enterprise_audit_include_expanded_diff
           - flows_continuous_login
-          - flows_refresh_others
     PatchedSourceStageRequest:
       type: object
       description: SourceStage Serializer
@@ -58892,15 +58882,10 @@ components:
               type: boolean
               description: Upon successful authentication, re-start authentication
                 in other open tabs.
-            flows_refresh_others:
-              type: boolean
-              description: Refresh other tabs after successful authentication.
-              deprecated: true
           required:
           - core_default_app_access
           - enterprise_audit_include_expanded_diff
           - flows_continuous_login
-          - flows_refresh_others
       required:
       - flags
     SettingsRequest:
@@ -58987,15 +58972,10 @@ components:
               type: boolean
               description: Upon successful authentication, re-start authentication
                 in other open tabs.
-            flows_refresh_others:
-              type: boolean
-              description: Refresh other tabs after successful authentication.
-              deprecated: true
           required:
           - core_default_app_access
           - enterprise_audit_include_expanded_diff
           - flows_continuous_login
-          - flows_refresh_others
       required:
       - flags
     SeverityEnum:
