@@ -84,6 +84,59 @@ const BASE_ESBUILD_PLUGINS = [
 ];
 
 /**
+ * Emits `dist/manifest.json`, mapping each locale tag to its content-hashed catalog
+ * chunk. The server reads this to `modulepreload` the catalog for the request's locale,
+ * so the chunk is cached before the entry bundle boots (no flash of untranslated text).
+ *
+ * @returns {Plugin}
+ */
+function localeManifestPlugin() {
+    // esbuild reports each locale catalog as a dynamic-import chunk whose sole
+    // "own" input is `src/locales/<tag>.ts`; that input identifies the chunk's tag.
+    const localeInput = /(?:^|\/)src\/locales\/([^/]+)\.[cm]?[jt]s$/;
+
+    return {
+        name: "locale-manifest",
+        setup(build) {
+            build.initialOptions.metafile = true;
+
+            build.onEnd(async (result) => {
+                if (!result.metafile) return;
+
+                /** @type {Record<string, string>} */
+                const manifest = {};
+
+                for (const [outputPath, output] of Object.entries(result.metafile.outputs)) {
+                    if (!outputPath.endsWith(".js")) continue;
+
+                    for (const inputPath of Object.keys(output.inputs)) {
+                        const match = localeInput.exec(inputPath);
+
+                        if (!match) continue;
+
+                        // Store the path relative to `dist/` so the server can resolve it
+                        // through `{% static %}` regardless of where the build ran.
+                        const distIndex = outputPath.lastIndexOf("dist/");
+                        manifest[match[1]] =
+                            distIndex === -1
+                                ? outputPath
+                                : outputPath.slice(distIndex + "dist/".length);
+                        break;
+                    }
+                }
+
+                await fs.writeFile(
+                    path.join(DistDirectory, "manifest.json"),
+                    JSON.stringify(manifest, null, 2),
+                );
+
+                logger.info(`Wrote locale manifest (${Object.keys(manifest).length} catalogs)`);
+            });
+        },
+    };
+}
+
+/**
  * @type {BuildOptions}
  */
 const BASE_ESBUILD_OPTIONS = {
@@ -203,6 +256,7 @@ async function doWatch() {
     const buildOptions = createESBuildOptions(entryPoints, [
         ...developmentPlugins,
         styleLoaderPlugin({ logger, watch: true }),
+        localeManifestPlugin(),
     ]);
 
     const buildContext = await esbuild.context(buildOptions);
@@ -232,7 +286,10 @@ async function doWatch() {
 async function doBuild() {
     logger.info(`🤖 Building entry points:\n\t${entryPointsDescription}`);
 
-    const buildOptions = createESBuildOptions(entryPoints, [styleLoaderPlugin({ logger })]);
+    const buildOptions = createESBuildOptions(entryPoints, [
+        styleLoaderPlugin({ logger }),
+        localeManifestPlugin(),
+    ]);
 
     await esbuild.build(buildOptions);
 
