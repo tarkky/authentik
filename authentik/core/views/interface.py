@@ -7,6 +7,7 @@ from django.contrib.auth.mixins import AccessMixin
 from django.http import HttpRequest
 from django.http.response import HttpResponse
 from django.shortcuts import redirect
+from django.utils.translation import check_for_language, override
 from django.utils.translation import gettext as _
 from django.views.generic.base import RedirectView, TemplateView
 
@@ -53,6 +54,21 @@ class RootRedirectView(AccessMixin, RedirectView):
 
 class InterfaceView(TemplateView):
     """Base interface view"""
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        # Honor an explicit `?locale=` override server-side (a dev/test aid), validated
+        # against the supported languages, so the server-rendered shell and the web UI —
+        # which reads the same parameter — can never disagree on the active locale.
+        locale = request.GET.get("locale")
+        if locale and check_for_language(locale):
+            with override(locale):
+                response = super().dispatch(request, *args, **kwargs)
+                # TemplateResponse renders lazily, after this context exits; force it
+                # now so the shell is rendered while the override language is active.
+                if hasattr(response, "render") and callable(response.render):
+                    response.render()
+                return response
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         brand = CurrentBrandSerializer(self.request.brand, context={"request": self.request})
